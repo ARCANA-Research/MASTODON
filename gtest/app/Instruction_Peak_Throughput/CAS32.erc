@@ -1,0 +1,15 @@
+JUMP main
+cas_super_int:
+CMPLT 0 1
+FLUSH
+MUX 0 1 2
+MUX 1 0 3
+RETURN
+
+main:
+COMPUTE 0 0
+for (itr = 0; itr < 100; itr+=1)
+	JUMP cas_super_int
+endfor
+COMPUTE_DONE
+EOF

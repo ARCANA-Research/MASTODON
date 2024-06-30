@@ -1,0 +1,6 @@
+ADD r30 r31 r32
+if (r30 < r20)
+  ADD r1 r2 r3
+else
+  ADD r1 r2 r4
+endif

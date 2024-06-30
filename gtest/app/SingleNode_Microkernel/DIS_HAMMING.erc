@@ -1,0 +1,12 @@
+JUMP main
+main:
+for (regfile = 0; regfile < 1; regfile += 1)
+  COMPUTE_ALL [regfile]
+for (i = 0; i < 32; i += 1)
+  OR [i] [i+32] [i]
+  POPC8 [i] [i+32]
+endfor
+COMPUTE_DONE
+FLUSH
+endfor
+EOF

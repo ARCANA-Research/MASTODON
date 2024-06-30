@@ -1,0 +1,37 @@
+for (regfile = 0; regfile < 4; regfile += 1)
+  COMPUTE 0 regfile
+  for (addr = 0; addr < 10; addr += 1)
+    MUL8 [addr] [addr + 10] [addr + 20]
+  endfor
+  COMPUTE_DONE
+  FLUSH
+endfor
+
+MOVE
+for (addr = 20; addr < 30; addr += 1)
+  MEM_COPY 0 1 [addr] 0 0 [addr + 10]
+  MEM_COPY 0 3 [addr] 0 2 [addr + 10]
+endfor
+MOVE_DONE
+
+COMPUTE 0 0
+COMPUTE 0 2
+for (addr = 20; addr < 30; addr += 1)
+  ADD [addr] [addr + 10] [addr + 20]
+endfor
+COMPUTE_DONE
+FLUSH
+
+MOVE
+for (addr = 40; addr < 50; addr += 1)
+  MEM_COPY 0 2 [addr] 0 0 [addr + 10]
+endfor
+MOVE_DONE
+
+COMPUTE 0 0
+for (addr = 40; addr < 50; addr += 1)
+  ADD [addr] [addr + 10] [addr + 20]
+endfor
+COMPUTE_DONE
+FLUSH
+EOF

@@ -1,0 +1,6 @@
+SET 0 0
+for (j = 0; j < 10; j+=1)
+  MUL8 r[j+10] r[j+20] r[j]
+endfor
+UNSET
+EOF

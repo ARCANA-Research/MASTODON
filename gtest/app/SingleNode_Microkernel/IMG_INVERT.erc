@@ -1,0 +1,10 @@
+
+for (regfile = 0; regfile < 64; regfile += 1)
+  	COMPUTE_ALL [regfile]
+	for (i = 1; i < 64; i += 1)
+	  SUB 0 [i] [i]
+	endfor
+	COMPUTE_DONE
+	FLUSH
+endfor
+EOF

@@ -1,0 +1,10 @@
+#define output 63
+for (regfile = 0; regfile < 64; regfile+=1)
+	COMPUTE_ALL [regfile]
+	for (k_dim = 0; k_dim < 30; k_dim +=1)
+		MAC8 [k_dim] [k_dim + 30] [output]
+	endfor
+	COMPUTE_DONE
+	FLUSH
+endfor
+EOF

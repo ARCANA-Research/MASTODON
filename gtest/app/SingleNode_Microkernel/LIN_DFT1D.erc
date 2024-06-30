@@ -1,0 +1,75 @@
+#define partial_sum 33
+
+JUMP main
+
+main:
+// Generate partial products for all reg. files across all lanes
+for (regfile = 0; regfile < 16; regfile += 1)
+  COMPUTE 0 [regfile]
+  COMPUTE 1 [regfile]
+endfor
+  INIT0 [partial_sum]
+for (addr = 0; addr < 16; addr += 1)
+  MUL32 [addr] [addr + 16] [addr + 32]
+  ADD [partial_sum] [addr + 32] [partial_sum]
+endfor
+COMPUTE_DONE
+FLUSH
+
+MOVE 0 0
+MOVE 1 1
+  MEM_COPY 4 [partial_sum] 0 [partial_sum + 1]
+  MEM_COPY 5 [partial_sum] 1 [partial_sum + 1]
+  MEM_COPY 6 [partial_sum] 2 [partial_sum + 1]
+  MEM_COPY 7 [partial_sum] 3 [partial_sum + 1]
+
+  MEM_COPY 12 [partial_sum] 8 [partial_sum + 1]
+  MEM_COPY 13 [partial_sum] 9 [partial_sum + 1]
+  MEM_COPY 14 [partial_sum] 10 [partial_sum + 1]
+  MEM_COPY 15 [partial_sum] 11 [partial_sum + 1]
+MOVE_DONE
+
+for (regfile = 0; regfile < 4; regfile += 1)
+  COMPUTE 0 [regfile]
+  COMPUTE 0 [regfile + 8]
+  COMPUTE 1 [regfile]
+  COMPUTE 1 [regfile + 8]
+endfor
+  ADD [partial_sum] [partial_sum + 1] [partial_sum]
+COMPUTE_DONE
+FLUSH
+
+MOVE 0 0
+MOVE 1 1
+  MEM_COPY 2 [partial_sum] 0 [partial_sum + 1]
+  MEM_COPY 3 [partial_sum] 1 [partial_sum + 1]
+
+  MEM_COPY 9 [partial_sum] 8 [partial_sum + 1]
+  MEM_COPY 11 [partial_sum] 10 [partial_sum + 1]
+MOVE_DONE
+
+for (regfile = 0; regfile < 2; regfile += 1)
+  COMPUTE 0 [regfile]
+  COMPUTE 0 [regfile + 8]
+  COMPUTE 1 [regfile]
+  COMPUTE 1 [regfile + 8]
+endfor
+  ADD [partial_sum] [partial_sum + 1] [partial_sum]
+COMPUTE_DONE
+FLUSH
+
+MOVE 0 0
+MOVE 1 1
+  MEM_COPY 1 [partial_sum] 0 [partial_sum + 1]
+
+  MEM_COPY 10 [partial_sum] 8 [partial_sum + 1]
+MOVE_DONE
+
+COMPUTE 0 0
+COMPUTE 0 8
+COMPUTE 1 0
+COMPUTE 1 8
+  ADD [partial_sum] [partial_sum + 1] [partial_sum]
+COMPUTE_DONE
+FLUSH
+EOF

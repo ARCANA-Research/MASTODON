@@ -1,0 +1,93 @@
+// the kernel is stored at r61, r62, r63
+// Kernel is 3x3 so 3 consecutive reg files are needed to store the kernel
+// the image pixels are replicated for every three reg files, 20 input pixels each
+
+func find_max(input_a, input_b, output_c)
+	CMPLT [input_a] [input_b]
+	LFLUSH
+	MUX [input_a] [input_b] [output_c]
+endfunc
+
+JUMP main
+
+main:
+
+// Multiply kernel with the input
+for (input_y = 0; input_y < 60; input_y += 1)
+	COMPUTE_ALL [input_y]
+endfor
+for (input_x = 0; input_x < 20; input_x += 1)
+	// Multiply right column of kernel
+	MOV [input_x] [input_x + 40]
+	// Multiply center column of kernel
+	MOV [input_x] [input_x + 20]
+	// Multiply left column of kernel
+	MOV [input_x] [input_x]
+endfor
+COMPUTE_DONE
+FLUSH
+
+// find_max( the kernel result of the same row together
+for (input_y = 0; input_y < 60; input_y += 1)
+	COMPUTE_ALL [input_y]
+endfor
+for (output_x = 21; output_x < 39; output_x += 1)
+	find_max([output_x], [output_x - 20 - 1], [output_x])
+	find_max([output_x], [output_x + 20 + 1], [output_x])
+endfor
+COMPUTE_DONE
+FLUSH
+
+// Reorganize data for ease of programming (find_max( a bit of extra latency)
+for (input_y = 0; input_y < 60; input_y += 1)
+	COMPUTE_ALL [input_y]
+endfor
+for (output_x = 21; output_x < 39; output_x += 1)
+	MOV [output_x] [output_x - 21]
+endfor
+COMPUTE_DONE
+FLUSH
+
+// get data from the upper regfile
+for (lane = 0; lane < 8; lane += 1)
+  MOVE [lane] [lane]
+endfor
+for (output_y = 4; output_y < 58; output_y += 3)
+	for (output_x = 0; output_x < 18; output_x += 1)
+		MEM_COPY [output_y-3-1] [output_x] [output_y] [output_x + 18]
+	endfor
+endfor
+MOVE_DONE
+
+// find_max( partial result
+for (output_y = 4; output_y < 58; output_y += 3)
+	COMPUTE_ALL [output_y]
+endfor
+for (output_x = 0; output_x < 18; output_x += 1)
+	find_max([output_x], [output_x + 18], [output_x])
+endfor
+COMPUTE_DONE
+FLUSH
+
+// get data from the lower regfile
+for (lane = 0; lane < 8; lane += 1)
+  MOVE [lane] [lane]
+endfor
+for (output_y = 4; output_y < 58; output_y += 3)
+	for (output_x = 0; output_x < 18; output_x += 1)
+		MEM_COPY [output_y+3+1] [output_x] [output_y] [output_x + 18]
+	endfor
+endfor
+MOVE_DONE
+
+// find_max( partial result
+for (output_y = 4; output_y < 58; output_y += 3)
+	COMPUTE_ALL [output_y]
+endfor
+for (output_x = 0; output_x < 18; output_x += 1)
+	find_max([output_x], [output_x + 18], [output_x])
+endfor
+COMPUTE_DONE
+FLUSH
+
+EOF

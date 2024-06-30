@@ -1,0 +1,9 @@
+ADD r30 31 32
+for(j = 0; j < 10; j+=1)
+  if (r[j] < r10)
+    ADD r[j] r[j+1] r[10]
+  else
+    ADD r[j] r[j+1] r[20]
+  endif
+endfor
+ADD r35 36 37

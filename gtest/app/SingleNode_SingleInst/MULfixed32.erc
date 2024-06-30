@@ -1,0 +1,131 @@
+// For division
+#define zero 50
+#define one 51
+#define shifted_d 52
+#define source 54
+#define shifted_s 54
+#define subtractor 55
+#define compare_result 56
+#define compare_mask 57
+#define counter 58
+#define loop_max 59
+#define num_bit 16
+
+// For square root
+// initialize this to 2^(Bits(n)/2)
+#define x0_init 60
+// not initialized
+#define x0_tmp 61
+// not initialized
+#define x1_tmp 62
+// initialize this to 2 (can also do INIT1, INC)
+#define const_two 63
+// not initialized; doesn't need to persist across programmed_division calls
+#define mask_tmp 48
+// (same as mask_tmp)
+#define mask_clear_throwaway 49
+
+// compute stuff
+#define num_rf 64
+#define num_lane 8
+
+// input value - compute sqrt of this value
+#define input_reg 0
+// place result at output_reg
+#define output_reg 1
+
+JUMP main
+
+func programmed_division(divider,dividend,quotient,mask_param)
+	UNMASK
+
+	INIT0 [counter]
+	INIT1 [loop_max]
+	LSHIFT [loop_max] [loop_max]
+	LSHIFT [loop_max] [loop_max]
+	LSHIFT [loop_max] [loop_max]
+	LSHIFT [loop_max] [loop_max]
+	DEC [loop_max] [loop_max]
+
+	SETMASK [mask_param]
+
+	MOV [divider] [source]
+	MOV [dividend] [shifted_d]
+
+	INIT0 [zero]
+	INIT1 [one]
+	INIT0 [quotient]
+
+	// Shift the divider 16 time before starting division
+	for (itr = 0; itr < [num_bit]; itr += 1)
+		LSHIFT [shifted_d] [shifted_d]
+	endfor
+
+	// First iteration (no quotient shift)
+	LSHIFT [source] [shifted_s]
+
+	// Generate quotient bit
+	CMPST [shifted_s] [shifted_d]
+	LFLUSH
+	GETMASK [compare_result]
+	DINV [compare_result]
+	AND [compare_result] [shifted_d] [subtractor]
+
+	// Record quotient bit in the output operand
+	AND [one] [compare_result] [compare_mask]
+	OR [compare_mask] [quotient] [quotient]
+
+	// Perform subtraction (partial remainder generation)
+	SUB [shifted_s] [subtractor] [source] 
+
+	// Perform partial remainder generation iteratively
+	//for (itr = 0; itr < [num_bit-1]; itr += 1)
+	.partial_generation:
+	// add this to reset torus
+	GETMASK [compare_result]
+	SETMASK [mask_param]
+
+	LSHIFT [quotient] [quotient]
+	LSHIFT [source] [shifted_s]
+
+	// Generate quotient bit
+	CMPST [shifted_s] [shifted_d]
+	LFLUSH
+	GETMASK [compare_result]
+	DINV [compare_result]
+	AND [compare_result] [shifted_d] [subtractor]
+
+	// Record quotient bit in the output operand
+	AND [one] [compare_result] [compare_mask]
+	OR [compare_mask] [quotient] [quotient]
+
+	// Perform subtraction (partial remainder generation)
+	SUB [shifted_s] [subtractor] [source] 
+
+	UNMASK
+	// dynamic loop check
+	INC [counter] [counter]
+	CMPEQ [counter] [loop_max]
+	LFLUSH
+
+	JUMP_COND .partial_generation
+	//endfor
+	// add this to reset torus
+	GETMASK [compare_result]
+
+	SETMASK [mask_param]
+endfunc
+
+main:
+COMPUTE 0 0
+INIT1 4
+LSHIFT 4 4
+LSHIFT 4 4
+LSHIFT 4 4
+LSHIFT 4 4
+INIT0 [mask_tmp]
+DEC [mask_tmp] [mask_tmp]
+MUL32 0 1 3
+programmed_division(3, 4, 2, [mask_tmp])
+COMPUTE_DONE
+EOF

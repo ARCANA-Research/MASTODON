@@ -1,0 +1,281 @@
+//Title:	Compact model of Co/BaTiO3/La0.67Sr0.33MnO3 Ferroelectric Tunnel Junction
+//Version:	Beta.3.0
+//Date:		19 June 2015
+//Language:	VerilogA
+//Property:	Institut D'Electronique Fondamentale, Univ.Paris Sud / UMR 8622, CNRS
+//Authors:	Zhaohao WANG, Weisheng ZHAO and Jacques-Olivier KLEIN
+
+`resetall
+`include "constants.vams"
+`include "disciplines.vams"
+`define e 1.6e-19
+`define kB 1.38e-23
+`define hbas 1.054e-34
+`define m 9.11e-31
+`define E0 1.0e9
+`define PI 3.141592653
+
+module BTOFTJ(T1,T2,s);
+
+inout T1,T2;
+output s;
+electrical T1,T2,s;
+
+parameter real PhiH_1 = 0.678;
+parameter real PhiH_2 = 0.978;
+parameter real mH_fac = 0.931;
+parameter real PhiL_1 = 0.530;
+parameter real PhiL_2 = 1.014;
+parameter real mL_fac = 0.437;
+parameter real tau0n = 2.8e-15;
+parameter real tau0p = 9e-14;
+parameter real Un = 0.67;
+parameter real Up = 0.52;
+parameter real r = 175e-9;
+parameter real t_B = 2e-9 from [1.2e-9:2.4e-9];
+parameter real sim_step = 1e-10;
+parameter real initial_state = 0.9 from (0:1);
+parameter real T = 300;
+
+real area;
+real FH1_pos;
+real FH2_pos;
+real FH1_neg;
+real FH2_neg;
+real FL1_pos;
+real FL2_pos;
+real FL1_neg;
+real FL2_neg;
+real TransH_pos;
+real TransH_neg;
+real TransL_pos;
+real TransL_neg;
+real IH;
+real IL;
+real FacH_C;
+real FacH_alpha;
+real FacL_C;
+real FacL_alpha;
+real mH;
+real mL;
+real taun;
+real taup;
+real Vb;
+real Id;
+real t_pre;
+real t_rel;
+real s_OFF_real;
+real s_ON_real;
+integer NucleReq;
+real NucleStage_HL;
+real NucleStage_LH;
+integer Num_t_B;
+integer IsTrue_t_B;
+
+analog	
+begin
+	@(initial_step)	
+	begin
+		IsTrue_t_B = (t_B*1e10)%4;
+		if(IsTrue_t_B != 0) 
+		begin
+			$strobe("Warning: Specified t_B = %g not reasonable!",t_B);
+			$finish(0);
+		end
+		
+		area = `PI*r*r;
+		t_pre = $abstime;
+		s_ON_real = initial_state;
+		s_OFF_real = 1.0 - s_ON_real;
+
+		TransH_pos = PhiH_2;
+		TransH_neg = -PhiH_1;
+		TransL_pos = PhiL_2;
+		TransL_neg = -PhiL_1;
+
+		mH = mH_fac*`m;
+		mL = mL_fac*`m;
+
+		FacH_C = -4*mH*pow(`e,3)/(9*`PI*`PI*pow(`hbas,3));
+		FacL_C = -4*mL*pow(`e,3)/(9*`PI*`PI*pow(`hbas,3));
+
+		FH2_pos = 0.7608;
+		FH2_neg = 0.283;
+		FL2_pos = 9.41e-2;
+		FL2_neg = 1.2e-3;
+
+		Num_t_B = (t_B*1e10)/4.0;
+
+		case(Num_t_B)
+			3: 
+			begin
+				FH1_pos = 3.739e-2;
+				FH1_neg = 3.55e-2;
+				FL1_pos = 7.211e-3;
+				FL1_neg = 1.354e-2;				
+			end
+			4: 
+			begin
+				FH1_pos = 9.795e-3;
+				FH1_neg = 6.517e-3;
+				FL1_pos = 1.605e-3;
+				FL1_neg = 2.133e-3;				
+			end
+			5: 
+			begin
+				FH1_pos = 2.6e-3;
+				FH1_neg = 1.2e-3;
+				FL1_pos = 3.549e-4;
+				FL1_neg = 3.273e-4;				
+			end
+			6: 
+			begin
+				FH1_pos = 6.707e-4;
+				FH1_neg = 2.168e-4;
+				FL1_pos = 7.843e-5;
+				FL1_neg = 4.964e-5;				
+			end
+			default: 
+			begin				
+				$strobe("Warning: Specified t_B = %g not reasonable!",t_B);
+				$finish(0);
+			end
+		endcase
+		
+		NucleStage_HL = 0;
+		NucleStage_LH = 0;
+				
+	end
+
+	Vb=V(T1,T2); 
+	
+	if(abs(Vb+PhiH_1-PhiH_2) <= 1e-6)	
+	begin
+		Vb = PhiH_2-PhiH_1+1e-4;
+	end
+
+	if(abs(Vb+PhiL_1-PhiL_2) <= 1e-6)	
+	begin
+		Vb = PhiL_2-PhiL_1+1e-4;
+	end
+	
+	FacH_alpha = 4*t_B*sqrt(2*mH*`e)/(3*`hbas*(PhiH_1+Vb-PhiH_2));
+	FacL_alpha = 4*t_B*sqrt(2*mL*`e)/(3*`hbas*(PhiL_1+Vb-PhiL_2));
+
+	if(Vb > TransH_neg && Vb < TransH_pos)	
+	begin
+			IH = area*FacH_C*limexp(FacH_alpha*(pow((PhiH_2-0.5*Vb),1.5) - pow((PhiH_1+0.5*Vb),1.5)))*(sinh(0.75*FacH_alpha*Vb*(pow((PhiH_2-0.5*Vb),0.5) - pow((PhiH_1+0.5*Vb),0.5))))/(FacH_alpha*FacH_alpha*pow((pow((PhiH_2-0.5*Vb),0.5) - pow((PhiH_1+0.5*Vb),0.5)),2));
+	end
+	else if(Vb >= TransH_pos)	
+	begin
+			IH = FH1_pos*area*`e*`e*`m*Vb*Vb*limexp(-FH2_pos*4*t_B*sqrt(2*mH*`e)*pow(PhiH_1,1.5)/(3*`hbas*abs(Vb)))/(16*`PI*`PI*`hbas*mH*PhiH_1*t_B*t_B);
+	end
+	else if(Vb <= TransH_neg)	
+	begin
+			IH = -(FH1_neg*area*`e*`e*`m*Vb*Vb*limexp(-FH2_neg*4*t_B*sqrt(2*mH*`e)*pow(PhiH_2,1.5)/(3*`hbas*abs(Vb)))/(16*`PI*`PI*`hbas*mH*PhiH_2*t_B*t_B));
+	end
+	
+	if(Vb > TransL_neg && Vb < TransL_pos)	
+	begin
+			IL = area*FacL_C*limexp(FacL_alpha*(pow((PhiL_2-0.5*Vb),1.5) - pow((PhiL_1+0.5*Vb),1.5)))*(sinh(0.75*FacL_alpha*Vb*(pow((PhiL_2-0.5*Vb),0.5) - pow((PhiL_1+0.5*Vb),0.5))))/(FacL_alpha*FacL_alpha*pow((pow((PhiL_2-0.5*Vb),0.5) - pow((PhiL_1+0.5*Vb),0.5)),2));			
+	end
+	else if(Vb >= TransL_pos)	
+	begin
+			IL = FL1_pos*area*`e*`e*`m*Vb*Vb*limexp(-FL2_pos*4*t_B*sqrt(2*mL*`e)*pow(PhiL_1,1.5)/(3*`hbas*abs(Vb)))/(16*`PI*`PI*`hbas*mL*PhiL_1*t_B*t_B);
+	end
+	else if(Vb <= TransL_neg)	
+	begin
+			IL = -(FL1_neg*area*`e*`e*`m*Vb*Vb*limexp(-FL2_neg*4*t_B*sqrt(2*mL*`e)*pow(PhiL_2,1.5)/(3*`hbas*abs(Vb)))/(16*`PI*`PI*`hbas*mL*PhiL_2*t_B*t_B));
+	end
+	
+	if(Vb > 0) 
+	begin
+		if(s_OFF_real < 1e-4 && NucleStage_LH < 1) 
+		begin
+			NucleReq = 1;
+			NucleStage_HL = 0;
+		end
+		else if(s_OFF_real < 1e-4 && NucleStage_LH >= 1) 
+		begin
+			NucleReq = 0;
+			NucleStage_LH = 0;
+			NucleStage_HL = 0;
+			s_OFF_real = 1e-4;
+		end
+		else 
+		begin
+			NucleReq = 0;
+			NucleStage_LH = 0;
+			NucleStage_HL = 0;
+		end
+	end
+
+	if(Vb < 0) 
+	begin
+		if(s_ON_real < 1e-4 && NucleStage_HL < 1) 
+		begin
+			NucleReq = -1;
+			NucleStage_LH = 0;			
+		end
+		else if(s_ON_real < 1e-4 && NucleStage_HL >= 1) 
+		begin
+			NucleReq = 0;
+			NucleStage_LH = 0;
+			NucleStage_HL = 0;
+			s_ON_real = 1e-4;
+		end
+		else 
+		begin
+			NucleReq = 0;
+			NucleStage_LH = 0;
+			NucleStage_HL = 0;
+		end
+	end	
+
+	if(Vb > 0 && NucleReq == 1)	
+	begin
+		taun = tau0n*limexp(t_B*Un*`e*`E0/(`kB*T*abs(Vb)));
+		NucleStage_LH = NucleStage_LH + ($abstime - t_pre)/taun;
+		t_pre = $abstime;
+	end	
+
+	if(Vb < 0 && NucleReq == -1)	
+	begin
+    	taun = tau0n*limexp(t_B*Un*`e*`E0/(`kB*T*abs(Vb)));
+    	NucleStage_HL = NucleStage_HL + ($abstime - t_pre)/taun;
+		t_pre = $abstime;
+	end	
+
+	if(Vb > 0 && NucleReq == 0)	
+	begin
+		taup = tau0p*limexp(t_B*Up*`e*`E0/(`kB*T*abs(Vb))); 
+		if (s_OFF_real != 1)
+		begin   
+			t_rel = taup*sqrt(ln(1/(1-s_OFF_real)));
+			s_OFF_real = 1 - limexp(-pow((t_rel + $abstime - t_pre)/taup,2));
+		end
+		s_ON_real = 1 - s_OFF_real;     
+		t_pre = $abstime;
+	end
+
+	if(Vb < 0 && NucleReq == 0)	
+	begin
+		taup = tau0p*limexp(t_B*Up*`e*`E0/(`kB*T*abs(Vb)));   
+		if (s_ON_real != 1)
+		begin 
+			t_rel = taup*sqrt(ln(1/(1-s_ON_real)));
+			s_ON_real = 1 - limexp(-pow((t_rel + $abstime - t_pre)/taup,2));
+		end
+		s_OFF_real = 1 - s_ON_real;     
+		t_pre = $abstime;
+	end
+
+	Id = IH*s_OFF_real + IL*s_ON_real;
+	I(T1,T2)<+ Id;
+	V(s)<+s_ON_real;
+	
+	$bound_step(sim_step);
+
+end
+
+endmodule

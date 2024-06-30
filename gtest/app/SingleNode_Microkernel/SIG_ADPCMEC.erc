@@ -1,0 +1,198 @@
+#define local_mask 63
+#define global_mask 62
+#define step_size_table_size 30
+#define index_table_size 16
+#define delta 61
+#define input_sample 60
+#define predicted_sample 59
+#define sign 58
+#define zero 57
+#define diff_q 56
+#define or_mask 55
+#define max_bound 54
+#define min_bound 53
+
+func search_step_size_table(input_index, return_val):
+	INIT0 [return_val]
+	for (step_size_index = 0; step_size_index < [step_size_table_size]; step_size_index += 1)
+			CMPEQ 0 0
+			LFLUSH
+			GETMASK 0
+			MUX 0 0 0
+			MOV [step_size_index + 30] [return_val]
+			UNMASK
+	endfor
+endfunc
+
+func search_index_table(input_index, return_val):
+	for (index_index = 0; index_index < [index_table_size]; index_index += 1)
+			CMPEQ 0 0
+			LFLUSH
+			GETMASK 0
+			MUX 0 0 0
+			MOV [index_index + 30] [return_val]
+			UNMASK
+	endfor
+endfunc
+
+COMPUTE 0 0
+	SUB [input_sample] [predicted_sample] [delta]
+	INIT0 [sign]
+	INIT0 [zero]
+		CMPLT 0 0
+		LFLUSH
+		GETMASK 0
+		MUX 0 0 0
+		INIT1 [sign]
+		LSHIFT [sign] [sign]
+		LSHIFT [sign] [sign]
+		LSHIFT [sign] [sign]
+		DINV [delta]
+		INC [delta] [delta]
+		UNMASK
+COMPUTE_DONE
+FLUSH
+
+// move the index value to search in the step size tables
+MOVE 0 1
+MOVE 0 2
+MOVE 0 3
+	MEM_COPY 0 0 0 0
+MOVE_DONE
+
+COMPUTE 1 0
+COMPUTE 2 0
+COMPUTE 3 0
+	search_step_size_table(0, 1)
+COMPUTE_DONE
+FLUSH
+
+MOVE 1 0
+	MEM_COPY 0 1 0 1
+	MEM_COPY_RSHIFT 0 1 1 0 4
+	MEM_COPY_RSHIFT 0 1 2 0 7
+	MEM_COPY_RSHIFT 0 1 3 0 10
+MOVE_DONE
+
+MOVE 2 0
+	MEM_COPY 0 1 0 2
+	MEM_COPY_RSHIFT 0 1 1 0 5
+	MEM_COPY_RSHIFT 0 1 2 0 8
+	MEM_COPY_RSHIFT 0 1 3 0 11
+MOVE_DONE
+
+MOVE 3 0
+	MEM_COPY 0 1 0 3
+	MEM_COPY_RSHIFT 0 1 1 0 6
+	MEM_COPY_RSHIFT 0 1 2 0 9
+	MEM_COPY_RSHIFT 0 1 3 0 12
+MOVE_DONE
+
+// get the step_size result
+COMPUTE 0 0
+	ADD 1 2 1
+	ADD 1 3 1
+	ADD 4 5 4
+	ADD 4 6 4
+	ADD 7 8 7
+	ADD 7 9 7
+	ADD 10 11 10
+	ADD 10 12 10
+	
+	INIT0 [diff_q]
+	CMPLT 0 0
+	LFLUSH
+	GETMASK 0
+	MUX 0 0 0
+	INIT1 [diff_q]
+	LSHIFT [diff_q] [diff_q]
+	LSHIFT [diff_q] [diff_q]
+	SUB [delta] 1 [delta]
+	UNMASK
+	CMPLT 0 0
+	LFLUSH
+	GETMASK 0
+	MUX 0 0 0
+	INIT1 [diff_q]
+	LSHIFT [diff_q] [diff_q]
+	LSHIFT [diff_q] [diff_q]
+	SUB [delta] 1 [delta]
+	UNMASK
+	CMPLT 0 0
+	LFLUSH
+	GETMASK 0
+	MUX 0 0 0
+	INIT1 [or_mask]
+	LSHIFT [or_mask] [or_mask]
+	OR [diff_q] [or_mask] [diff_q]
+	SUB [delta] 4 [delta]
+	UNMASK
+	CMPLT 0 0
+	LFLUSH
+	GETMASK 0
+	MUX 0 0 0
+	INIT1 [or_mask]
+	OR [diff_q] [or_mask] [diff_q]
+	SUB [delta] 7 [delta]
+	UNMASK
+	
+	OR [diff_q] [sign] [diff_q]
+	AND [diff_q] [or_mask] [diff_q]
+	MUL16 7 [diff_q] [delta]
+	ADD [delta] 10 [delta]
+	
+	CMPLT 0 0
+	LFLUSH
+	GETMASK 0
+	MUX 0 0 0
+		DINV [delta]
+		INC [delta] [delta]
+	UNMASK
+	
+	ADD [predicted_sample] [delta] [predicted_sample]
+	
+	CMPLT 0 0
+	LFLUSH
+	GETMASK 0
+	MUX 0 0 0
+		MOV [max_bound] [predicted_sample]
+	UNMASK
+	CMPLT 0 0
+	LFLUSH
+	GETMASK 0
+	MUX 0 0 0
+		MOV [min_bound] [predicted_sample]
+	UNMASK
+COMPUTE_DONE
+FLUSH
+
+// move the index value to search in the index tables
+MOVE 0 4
+	MEM_COPY 0 [diff_q] 0 0
+MOVE_DONE
+
+COMPUTE 4 0
+	search_step_size_table(0, 1)
+COMPUTE_DONE
+FLUSH
+
+MOVE 4 0
+	MEM_COPY 0 1 0 0
+MOVE_DONE
+
+COMPUTE 0 0
+	CMPLT 0 0
+	LFLUSH
+	GETMASK 0
+	MUX 0 0 0
+		MOV [min_bound] 0
+	UNMASK
+	CMPLT 0 0
+	LFLUSH
+	GETMASK 0
+	MUX 0 0 0
+		MOV [max_bound] 0
+	UNMASK
+COMPUTE_DONE
+FLUSH
+EOF

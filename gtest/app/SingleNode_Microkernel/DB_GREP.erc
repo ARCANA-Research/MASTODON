@@ -1,0 +1,154 @@
+
+for (regfile = 0; regfile < 64; regfile += 1)
+	COMPUTE_ALL [regfile]
+INIT0 1
+COMPUTE_DONE
+FLUSH
+endfor
+
+for (regfile = 0; regfile < 64; regfile += 1)
+	COMPUTE_ALL [regfile]
+for (i = 3; i < 64; i+=1)
+	CMPEQ [i] 0
+	LFLUSH
+	GETMASK 2
+	MUX 0 0 0
+	INC 1 1
+	UNMASK
+endfor
+COMPUTE_DONE
+FLUSH
+endfor
+
+for (lane = 0; lane < 8; lane += 1)
+  MOVE [lane] [lane]
+endfor
+for (regfile = 0; regfile < 32; regfile += 1)
+  MEM_COPY [regfile + 32] 1 [regfile] 2
+endfor
+MOVE_DONE
+
+for (regfile = 0; regfile < 32; regfile += 1)
+  COMPUTE_ALL [regfile]
+ADD 1 2 1
+COMPUTE_DONE
+FLUSH
+endfor
+
+// Move partial products from lanes 16 - 31 to lanes 0 - 15
+for (lane = 0; lane < 8; lane += 1)
+  MOVE [lane] [lane]
+endfor
+for (regfile = 0; regfile < 16; regfile += 1)
+  MEM_COPY [regfile + 16] 1 [regfile] 2
+endfor
+MOVE_DONE
+
+for (regfile = 0; regfile < 16; regfile += 1)
+  COMPUTE_ALL [regfile]
+ADD 1 2 1
+COMPUTE_DONE
+FLUSH
+endfor
+
+// Move partial products from lanes 8 - 15 to lanes 0 - 7
+for (lane = 0; lane < 8; lane += 1)
+  MOVE [lane] [lane]
+endfor
+for (regfile = 0; regfile < 8; regfile += 1)
+  MEM_COPY [regfile + 8] 1 [regfile] 2
+endfor
+MOVE_DONE
+
+for (regfile = 0; regfile < 8; regfile += 1)
+  COMPUTE_ALL [regfile]
+ADD 1 2 1
+COMPUTE_DONE
+FLUSH
+endfor
+
+// Move partial products from lanes 4 - 7 to lanes 0 - 3
+for (lane = 0; lane < 8; lane += 1)
+  MOVE [lane] [lane]
+endfor
+for (regfile = 0; regfile < 4; regfile += 1)
+  MEM_COPY [regfile + 4] 1 [regfile] 2
+endfor
+MOVE_DONE
+
+for (regfile = 0; regfile < 4; regfile += 1)
+  COMPUTE_ALL [regfile]
+ADD 1 2 1
+COMPUTE_DONE
+FLUSH
+endfor
+
+// Move partial products from lanes 2 - 3 to lanes 0 - 1
+for (lane = 0; lane < 8; lane += 1)
+  MOVE [lane] [lane]
+endfor
+for (regfile = 0; regfile < 2; regfile += 1)
+  MEM_COPY [regfile + 2] 1 [regfile] 2
+endfor
+MOVE_DONE
+
+for (regfile = 0; regfile < 2; regfile += 1)
+  COMPUTE_ALL [regfile]
+ADD 1 2 1
+COMPUTE_DONE
+FLUSH
+endfor
+
+// Move partial products from lane 1 to lanes 0
+for (lane = 0; lane < 8; lane += 1)
+  MOVE [lane] [lane]
+endfor
+for (regfile = 0; regfile < 1; regfile += 1)
+  MEM_COPY [regfile + 1] 1 [regfile] 2
+endfor
+MOVE_DONE
+
+for (regfile = 0; regfile < 1; regfile += 1)
+  COMPUTE_ALL [regfile]
+ADD 1 2 1
+COMPUTE_DONE
+FLUSH
+endfor
+
+// Inter-Nodemove to add all partial product together
+MOVE 1 0
+MOVE 3 2
+MOVE 5 4
+MOVE 7 6
+MEM_COPY 0 1 0 2
+MOVE_DONE
+
+COMPUTE 0 0
+COMPUTE 2 0
+COMPUTE 4 0
+COMPUTE 6 0
+ADD 1 2 1
+COMPUTE_DONE
+FLUSH
+
+MOVE 4 0
+MOVE 6 2
+MEM_COPY 0 1 0 2
+MOVE_DONE
+
+COMPUTE 0 0
+COMPUTE 2 0
+ADD 1 2 1
+COMPUTE_DONE
+FLUSH
+
+MOVE 2 0
+MEM_COPY 0 1 0 2
+MOVE_DONE
+
+COMPUTE 0 0
+ADD 1 2 1
+COMPUTE_DONE
+FLUSH
+
+EOF

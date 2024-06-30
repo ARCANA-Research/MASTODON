@@ -1,0 +1,219 @@
+// Matrix-multiplication on a single  of dimension A (64,512) x B (512, 22)
+// First vec. reg. (r0) of every register files across 8 lanes store a column of A
+// r1  - 21 stores B vectors, each B element is replicated to the entire column
+// r22 - r42 stores partial product for C. See gtest for detailed data mapping
+
+// After all partial products are generated for each reg. file, all 64 reg. files
+// are reduced into a single partial product matrix stored in reg. file 0, r22 - r42
+// During the reduction, r43 - r63 is used as placeholder for MEM_COPY operations
+
+// After each lane has created a partial product matrix that stored in their
+// respective reg. file 0, r22 - r42, perform inter-NodeMEM_COPY to reduce it
+// one last time, the final result C matrix is stored in lane 0, reg. file 0, r22 - r42
+
+// Generate partial products for all reg. files across all lanes
+for (regfile = 0; regfile < 64; regfile += 1)
+	COMPUTE_ALL [regfile]
+	for (i = 1; i < 22; i += 1)
+	MUL8 0 [i] [i + 21]
+	endfor
+	COMPUTE_DONE
+	FLUSH
+endfor
+
+// Perform intra-Nodereduction
+// Move partial products from lanes 32 - 63 to lanes 0 - 31
+for (lane = 0; lane < 8; lane += 1)
+  MOVE [lane] [lane]
+endfor
+for (regfile = 0; regfile < 32; regfile += 1)
+  for (C_addr = 22; C_addr < 43; C_addr += 1)
+    MEM_COPY [regfile + 32] [C_addr] [regfile] [C_addr + 21]
+  endfor
+endfor
+MOVE_DONE
+
+for (regfile = 0; regfile < 32; regfile += 1)
+	COMPUTE_ALL [regfile]
+	for (i = 22; i < 43; i += 1)
+		ADD [i] [i + 21] [i]
+	endfor
+	COMPUTE_DONE
+	FLUSH
+endfor
+
+// Move partial products from lanes 16 - 31 to lanes 0 - 15
+for (lane = 0; lane < 8; lane += 1)
+  MOVE [lane] [lane]
+endfor
+for (regfile = 0; regfile < 16; regfile += 1)
+  for (C_addr = 22; C_addr < 43; C_addr += 1)
+    MEM_COPY [regfile + 16] [C_addr] [regfile] [C_addr + 21]
+  endfor
+endfor
+MOVE_DONE
+
+for (regfile = 0; regfile < 16; regfile += 1)
+	COMPUTE_ALL [regfile]
+	for (i = 22; i < 43; i += 1)
+	  ADD [i] [i + 21] [i]
+	endfor
+	COMPUTE_DONE
+	FLUSH
+endfor
+
+// Move partial products from lanes 8 - 15 to lanes 0 - 7
+for (lane = 0; lane < 8; lane += 1)
+  MOVE [lane] [lane]
+endfor
+for (regfile = 0; regfile < 8; regfile += 1)
+  for (C_addr = 22; C_addr < 43; C_addr += 1)
+    MEM_COPY [regfile + 8] [C_addr] [regfile] [C_addr + 21]
+  endfor
+endfor
+MOVE_DONE
+
+for (regfile = 0; regfile < 8; regfile += 1)
+	COMPUTE_ALL [regfile]
+	for (i = 22; i < 43; i += 1)
+	  ADD [i] [i + 21] [i]
+	endfor
+	COMPUTE_DONE
+	FLUSH
+endfor
+
+// Move partial products from lanes 4 - 7 to lanes 0 - 3
+for (lane = 0; lane < 8; lane += 1)
+  MOVE [lane] [lane]
+endfor
+for (regfile = 0; regfile < 4; regfile += 1)
+  for (C_addr = 22; C_addr < 43; C_addr += 1)
+    MEM_COPY [regfile + 4] [C_addr] [regfile] [C_addr + 21]
+  endfor
+endfor
+MOVE_DONE
+
+for (regfile = 0; regfile < 4; regfile += 1)
+	COMPUTE_ALL [regfile]
+	for (i = 22; i < 43; i += 1)
+	  ADD [i] [i + 21] [i]
+	endfor
+	COMPUTE_DONE
+	FLUSH
+endfor
+
+// Move partial products from lanes 2 - 3 to lanes 0 - 1
+for (lane = 0; lane < 8; lane += 1)
+  MOVE [lane] [lane]
+endfor
+for (regfile = 0; regfile < 2; regfile += 1)
+  for (C_addr = 22; C_addr < 43; C_addr += 1)
+    MEM_COPY [regfile + 2] [C_addr] [regfile] [C_addr + 21]
+  endfor
+endfor
+MOVE_DONE
+
+for (regfile = 0; regfile < 2; regfile += 1)
+	COMPUTE_ALL [regfile]
+	for (i = 22; i < 43; i += 1)
+	  ADD [i] [i + 21] [i]
+	endfor
+	COMPUTE_DONE
+	FLUSH
+endfor
+
+// Move partial products from lane 1 to lanes 0
+for (lane = 0; lane < 8; lane += 1)
+  MOVE [lane] [lane]
+endfor
+for (regfile = 0; regfile < 1; regfile += 1)
+  for (C_addr = 22; C_addr < 43; C_addr += 1)
+    MEM_COPY [regfile + 1] [C_addr] [regfile] [C_addr + 21]
+  endfor
+endfor
+MOVE_DONE
+
+for (regfile = 0; regfile < 1; regfile += 1)
+	COMPUTE_ALL [regfile]
+	for (i = 22; i < 43; i += 1)
+	  ADD [i] [i + 21] [i]
+	endfor
+	COMPUTE_DONE
+	FLUSH
+endfor
+
+// Inter-Nodemove to add all partial product together
+MOVE 1 0
+MOVE 3 2
+MOVE 5 4
+MOVE 7 6
+for (C_addr = 22; C_addr < 43; C_addr += 1)
+  MEM_COPY 0 [C_addr] 0 [C_addr + 21]
+endfor
+MOVE_DONE
+
+COMPUTE 0 0
+for (i = 22; i < 43; i += 1)
+  ADD [i] [i + 21] [i]
+endfor
+COMPUTE_DONE
+FLUSH
+
+COMPUTE 2 0
+for (i = 22; i < 43; i += 1)
+  ADD [i] [i + 21] [i]
+endfor
+COMPUTE_DONE
+FLUSH
+
+
+COMPUTE 4 0
+for (i = 22; i < 43; i += 1)
+  ADD [i] [i + 21] [i]
+endfor
+COMPUTE_DONE
+FLUSH
+
+COMPUTE 6 0
+for (i = 22; i < 43; i += 1)
+  ADD [i] [i + 21] [i]
+endfor
+COMPUTE_DONE
+FLUSH
+
+
+MOVE 4 0
+MOVE 6 2
+for (C_addr = 22; C_addr < 43; C_addr += 1)
+  MEM_COPY 0 [C_addr] 0 [C_addr + 21]
+endfor
+MOVE_DONE
+
+COMPUTE 0 0
+for (i = 22; i < 43; i += 1)
+  ADD [i] [i + 21] [i]
+endfor
+COMPUTE_DONE
+FLUSH
+
+COMPUTE 2 0
+for (i = 22; i < 43; i += 1)
+  ADD [i] [i + 21] [i]
+endfor
+COMPUTE_DONE
+FLUSH
+
+MOVE 2 0
+for (C_addr = 22; C_addr < 43; C_addr += 1)
+  MEM_COPY 0 [C_addr] 0 [C_addr + 21]
+endfor
+MOVE_DONE
+
+COMPUTE 0 0
+for (i = 22; i < 43; i += 1)
+  ADD [i] [i + 21] [i]
+endfor
+COMPUTE_DONE
+FLUSH
+
+EOF

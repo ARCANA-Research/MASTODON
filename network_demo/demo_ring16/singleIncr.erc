@@ -1,0 +1,12 @@
+COMPUTE 0 0
+for(it=0;it<64;it+=1)
+	INIT0 [it]
+endfor
+INIT1 [63]
+ADD 0 0 0
+for(it=0;it<16;it+=1)
+ADD [it] 63 1
+endfor
+COMPUTE_DONE
+FLUSH
+EOF

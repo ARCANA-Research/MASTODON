@@ -1,0 +1,35 @@
+#define difference 63
+for (regfile = 0; regfile < 1; regfile += 1)
+  COMPUTE_ALL [regfile]
+for (data = 0; data < 28; data += 2)
+	CMPLT 0 0
+	LFLUSH
+	GETMASK 0
+	MUX 0 0 0
+	SUB 0 0 0
+	UNMASK
+	DINV 0
+	MUX 0 0 0
+	SUB 0 0 0
+	UNMASK
+	
+	INIT0 0
+	ADD 0 0 0
+	
+	CMPLT 0 0
+	LFLUSH
+	GETMASK 0
+	MUX 0 0 0
+	SUB 0 0 0
+	UNMASK
+	DINV 0
+	MUX 0 0 0
+	SUB 0 0 0
+	UNMASK
+	
+	ADD 0 0 0
+endfor
+COMPUTE_DONE
+FLUSH
+endfor
+EOF

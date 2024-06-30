@@ -1,0 +1,7 @@
+for (i = 0; i <= 3; i+=1)
+  SETBULK 0 0 ctx[i]
+  for(j = 0; j < 5; j+=1)
+    ADD r[i % 10 + j] r[i * 10 + j + 1] r[i * j]
+  endfor
+  UNSET
+endfor

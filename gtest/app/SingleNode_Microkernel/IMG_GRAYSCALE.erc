@@ -1,0 +1,15 @@
+JUMP main
+main:
+for (regfile = 0; regfile < 64; regfile += 1)
+  	COMPUTE_ALL [regfile]
+	for (i = 0; i < 20; i+=1)
+	  ADD [i] [i + 20] [i+20]
+	  ADD [i+20] [i + 40] [i+20]
+	endfor
+	for (i = 0; i < 20; i+=1)
+	  QDIV8 [i+20] 63 [i]
+	endfor
+	COMPUTE_DONE
+	FLUSH
+endfor
+EOF

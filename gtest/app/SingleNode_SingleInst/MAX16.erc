@@ -1,0 +1,13 @@
+JUMP main
+max_super_int:
+CMPLT 0 1
+FLUSH
+GETMASK 2
+MUX 0 1 2
+RETURN
+
+main:
+COMPUTE 0 0
+JUMP max_super_int
+COMPUTE_DONE
+EOF

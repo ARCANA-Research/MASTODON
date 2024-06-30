@@ -1,0 +1,87 @@
+`include "disciplines.vams"
+`include "constants.h"
+
+module Memristor(p, n, w_position);
+    inout p, n;
+    output w_position;
+ 
+    electrical p, n, w_position;
+ 
+    parameter real initial_state = 0;
+    parameter real R_HRS = 5e7;
+    parameter real R_LRS = 1.5e5;
+    parameter real K_SET = -30;
+    parameter real K_RESET = 10e-4;
+    parameter real Alpha_SET = 5;
+    parameter real Alpha_RESET = 5;
+    parameter real V_SET = -5.7;
+    parameter real V_RESET = 1.4;
+    parameter real IV_relation = 1;
+    parameter real x_on = 0;
+    parameter real x_off = 10e-09;
+    parameter real D = 10e-9;
+
+    real R;
+    real first_iteration = 0;
+    real x;
+    real dxdt;
+    real x_last;
+    real l;
+    real tp1;
+    real t1;
+    real dt;
+ 
+    analog 
+    begin
+        if(first_iteration==0) 
+        begin   
+            x_last=(1-initial_state)*D;    
+        end
+    
+        tp1 = $abstime;
+        dt = tp1 - t1;
+
+        if (V(p,n) <= V_SET) 
+        begin
+            dxdt = K_SET*pow((V(p,n)/V_SET-1), Alpha_SET);
+        end
+        else if (V(p,n) >= V_RESET) 
+        begin 
+            dxdt = K_RESET*pow((V(p,n)/V_RESET-1), Alpha_RESET);
+        end
+        else 
+        begin
+            dxdt=0;
+        end
+
+        x = x_last+dt*dxdt;
+        x_last=x;
+        
+        if (x >= D) 
+        begin
+            dxdt=0;             
+            x=D;
+        end
+        else if (x <= 0) 
+        begin
+            dxdt=0;
+            x=0;
+        end
+                        
+        l = ln(R_HRS/R_LRS);
+            
+        if (IV_relation==0) 
+        begin 
+            I(p,n) <+ V(p,n)/(R_HRS*x/D+R_LRS*(1-x/D));
+        end
+        else if (IV_relation==1) 
+        begin 
+            I(p,n) <+ V(p,n)/(R_LRS*exp(l*(x-x_on)/(x_off-x_on)));  
+        end
+    
+        t1 = $abstime;
+        first_iteration=1;  
+
+        V(w_position) <+ 1 - (x/D);                               
+    end                                            
+endmodule

@@ -1,0 +1,111 @@
+// VerilogA for 64x64tile, MS0_magic, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module MS0_magic(pos, neg, s);
+
+parameter real Von = 2 from (0:inf);
+parameter real Voff = 1 from (0:inf);
+parameter real Rl = 50e3 from (0:inf);
+parameter real Rh = 25e6 from  (0:inf);
+parameter real tauset = 1e-9 from (0:inf);
+parameter real taures = 1e-9 from (0:inf);
+parameter real step = 0 from (0:inf);
+parameter real incub = 5e-9 from (0:inf);
+parameter integer initial_state = 0;
+
+real R;
+real dRdt;
+real dt;
+real ti;
+real tip1;
+real setincb;
+real resincb;
+integer state;
+inout pos,neg;
+output s;
+electrical pos,neg,s;
+
+analog 
+begin
+	@(initial_step) 
+	begin
+		if (initial_state == 0)
+		begin
+			R = Rh;
+		end
+		else if (initial_state == 1)
+		begin
+			R = Rl;
+		end 
+		state = initial_state;
+		ti = 0;
+		setincb = 0;
+		resincb = 0;
+	end
+
+	$bound_step(step);
+	tip1 = $abstime;
+	dt = tip1 - ti;
+
+	if(V(pos,neg) > Von) 
+	begin	
+		setincb = setincb + dt;
+		if (setincb > incub) 
+		begin
+			dRdt = -(R-Rl)/tauset;
+			resincb = 0;
+			state = 1;
+		end
+		else
+		begin
+			dRdt=0;
+		end
+	end
+	if(V(pos,neg) < -Voff) 
+	begin
+		resincb = resincb+dt;
+		if (resincb > incub) 
+		begin
+			dRdt = -(R-Rh)/taures;
+			state = 0;
+			setincb = 0;
+		end
+		else
+		begin
+			dRdt=0;
+		end
+	end
+	else 
+	begin
+		if (state==1)
+		begin
+			dRdt = -(R-Rl)/tauset;
+		end
+		else
+		begin
+			dRdt = -(R-Rh)/taures;
+		end
+	end
+
+
+	R = R + dRdt*dt;
+	ti = $abstime;
+
+	if (R > Rh)
+	begin
+		R = Rh
+	end
+	else if (R < Rl)
+	begin
+		R = Rl
+	end
+
+	I(pos,neg) <+ V(pos,neg)/R;
+	V(s) <+ (Rh-R)/(Rh-Rl);
+	
+end
+endmodule
+
+

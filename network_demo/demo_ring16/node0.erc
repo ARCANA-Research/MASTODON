@@ -1,0 +1,12 @@
+COMPUTE 0 0
+for(it=0;it<64;it+=1)
+	INIT0 [it]
+endfor
+INIT1 63
+ADD 0 63 [it]
+COMPUTE_DONE
+FLUSH
+MPI_SEND 1 0 0
+MEM_COPY 0 0 0 0
+MPI_SEND_DONE
+EOF

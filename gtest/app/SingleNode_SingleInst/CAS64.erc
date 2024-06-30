@@ -1,0 +1,15 @@
+JUMP main
+cas_super_int:
+CMPLT 0 1
+FLUSH
+GETMASK 2
+MOV 2 3
+MUX 0 1 2
+MUX 1 0 3
+RETURN
+
+main:
+COMPUTE 0 0
+JUMP cas_super_int
+COMPUTE_DONE
+EOF
